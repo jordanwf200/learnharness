@@ -41,7 +41,7 @@ describe("LH_DATA_DIR seam", () => {
 		const out = execFileSync(
 			process.execPath,
 			["--import", TSX_LOADER, "--eval", `const m = await import(${JSON.stringify(path.join(REPO_ROOT, "config.ts"))}); console.log(JSON.stringify({ data: m.PATHS.data, chats: m.PATHS.chats }));`],
-			{ cwd: REPO_ROOT, encoding: "utf-8" },
+			{ cwd: REPO_ROOT, encoding: "utf-8", env: { ...process.env, LH_DATA_DIR: undefined } },
 		);
 		const parsed = JSON.parse(out) as { data: string; chats: string | null };
 		assert.equal(parsed.data, path.join(REPO_ROOT, "data"));

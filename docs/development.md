@@ -64,6 +64,28 @@ The `claude-code` provider runs Anthropic models through the **locally installed
 
 How it works (`src/agent/claude-code-cli.ts`, `src/agent/claude-code-bridge.ts`): pi-ai's own anthropic-messages provider builds each request and parses the reply, and the bridge is the `fetch` it calls. Each agent turn runs one `claude -p` process with the CLI's built-in tools, settings, CLAUDE.md, skills, other MCP servers, session persistence and auto-compaction turned off, and with every inherited `CLAUDE_*` / `ANTHROPIC_*` variable dropped (so an Anthropic API key saved in the app never redirects the CLI's billing). Prior turns are replayed verbatim from a session file (`--resume`). The app's tools reach the model through a stub MCP server and appear to it as `mcp__lh__<name>`. The CLI never executes them: each call is relayed over loopback to the bridge and answered with the result pi-agent-core produced, so a whole tool loop stays on one process. The CLI still adds its own short context to each turn (working directory, date, model identity, account email).
 
+### Syncing learning records between computers
+
+When the data directory (`data/`, or `LH_DATA_DIR`) is **its own git checkout**, the server keeps it in sync with that checkout's remote (`src/server/data-sync.ts`):
+
+- at startup, before serving any request, it pulls, then commits and pushes anything left over from the last run;
+- while running, it commits a few seconds after writes settle (at most a minute apart during a long turn), with messages like `Sync: +3 graph nodes, +1 reasoning chain, 1 session updated`, and pushes;
+- if another computer pushed first it rebases and retries. If the same file changed on both sides it stops pushing, keeps the local commit, and shows the error under Settings → General → Data sync, so you can resolve it with git in the data directory.
+
+Remote changes are pulled only at startup, so **quit the app on one computer before continuing on another**. Debug recordings, atomic-write temp files and any `auth.json` / `*-credentials.json` are kept out by the data repo's `.gitignore`, which sync maintains. API keys never live in the data directory anyway. Set `LH_DATA_SYNC=0` to turn sync off without removing the checkout. Tests never touch `data/`: `npm test` preloads `tests/isolate-data-dir.ts`, which points every test process at a throwaway directory.
+
+Setting up a computer (use a **private** repository: it holds your chats):
+
+```bash
+git clone https://github.com/<you>/learnharness.git
+cd learnharness
+npm install
+git clone https://github.com/<you>/learnharness-data.git data
+npm run dev
+```
+
+On the first computer, if `data/` already holds records, turn it into the checkout instead: `cd data && git init -b main && git remote add origin <url>`, and the next start commits and pushes everything. For the packaged desktop app, the same works with its data directory (`~/Library/Application Support/LearnHarness/data` on macOS).
+
 ## Architecture
 
 Five layers, dependency arrows pointing inward only, machine-enforced as four ESLint zones (shell → barrels only; core and agent never import below themselves). Two composition roots, one writer per store. The full spec — layers, systems, runtime flows, invariants, seams: [`docs/architecture.md`](architecture.md).
