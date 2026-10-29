@@ -9,6 +9,18 @@ export const NATIVE_SUBSCRIPTIONS = [
 	{ providerId: "xai", logicalId: "xai-subscription", label: "Grok" },
 ] as const;
 
+/** The local Claude Code CLI connection: requests run through the user's own
+ *  logged-in `claude` binary (src/agent/claude-code-cli.ts), billed to that
+ *  login rather than to a key. */
+export const CLAUDE_CODE = { providerId: "claude-code", label: "Claude Code" } as const;
+
+/** GET/POST /api/claude-code: the CLI's install + login state. */
+export type ClaudeCodeConnectionStatus =
+	| { state: "unknown" | "missing" }
+	| { state: "logged-out"; path: string }
+	| { state: "ready"; path: string; email?: string; plan?: string }
+	| { state: "error"; path: string; message: string };
+
 export interface SubscriptionPrompt {
 	id: string;
 	type: "text" | "secret" | "select" | "manual_code";

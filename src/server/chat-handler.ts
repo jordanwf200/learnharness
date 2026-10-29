@@ -59,6 +59,7 @@ import {
 	type TurnInput,
 } from "../core/input-events.ts";
 import { steerDelivered } from "../core/contracts.ts";
+import { CLAUDE_CODE } from "../core/contracts/subscriptions.ts";
 import type {CallUsage} from "../core/contracts.ts";
 
 /**
@@ -229,6 +230,8 @@ export async function handleChatInput(
 			return Response.json({ error: "Background use is off for this connection. Automatic follow-up remains deferred in its queue." }, { status: 403 });
 		}
 	}
+	// The CLI's login lives outside the app: re-check it (briefly cached).
+	if (conversation.provider === CLAUDE_CODE.providerId) await refreshConnectionCatalog(conversation.provider);
 	if (!providerKeyPresent(conversation.provider)) {
 		const envelope = providerKeyMissingEnvelope(conversation.provider, ["strong"]);
 		console.info(`[chat ${chatId}] turn refused — ${JSON.stringify(envelope)}`);
